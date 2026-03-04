@@ -1,0 +1,2117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE MudletPackage>
+<MudletPackage version="1.001">
+	<TriggerPackage>
+		<TriggerGroup isActive="yes" isFolder="yes" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+			<name>Runewarden</name>
+			<script></script>
+			<triggerType>0</triggerType>
+			<conditonLineDelta>0</conditonLineDelta>
+			<mStayOpen>0</mStayOpen>
+			<mCommand></mCommand>
+			<packageName></packageName>
+			<mFgColor>#ff0000</mFgColor>
+			<mBgColor>#ffff00</mBgColor>
+			<mSoundFile></mSoundFile>
+			<colorTriggerFgColor>#000000</colorTriggerFgColor>
+			<colorTriggerBgColor>#000000</colorTriggerBgColor>
+			<regexCodeList />
+			<regexCodePropertyList />
+			<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>Sketching Runes</name>
+				<script>regez = regez or {}
+regez.runeSketch = regez.runeSketch or {}
+
+local rune = matches[2]:lower()
+local targetRaw = matches[3]
+
+-- Normalize target text for display
+local target
+if targetRaw == "yourself" then
+  target = "me"
+elseif targetRaw == "the ground" then
+  target = "ground"
+elseif targetRaw == "a totem" then
+  target = "totem"
+else
+  target = targetRaw
+end
+
+-- Store context
+regez.runeSketch.last = {
+  rune = rune,
+  target = target
+}
+
+-- Kill old timer if it exists
+if regez.runeSketch.timer then
+  killTimer(regez.runeSketch.timer)
+end
+
+-- Auto-clear after 10 seconds
+regez.runeSketch.timer = tempTimer(10, function()
+  regez.runeSketch.last = nil
+  regez.runeSketch.timer = nil
+end)
+
+-- Echo + suppress original line
+local runeCap = rune:gsub("^%l", string.upper)
+
+deleteLine()
+cecho(string.format(
+  "\n&lt;light_slate_blue&gt;[GroundeCombat] &lt;cyan&gt;Sketching &lt;yellow&gt;%s on &lt;white&gt;%s&lt;cyan&gt;\n",
+  runeCap, target:upper()
+))</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>0</conditonLineDelta>
+				<mStayOpen>2</mStayOpen>
+				<mCommand></mCommand>
+				<packageName></packageName>
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile></mSoundFile>
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>^You begin sketching an? (\w+) rune on (yourself|the ground|a totem|[A-Za-z][A-Za-z -']*)\.$</string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>1</integer>
+				</regexCodePropertyList>
+			</Trigger>
+			<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>Sketch Finished</name>
+				<script>regez = regez or {}
+regez.runeSketch = regez.runeSketch or {}
+
+local rune = matches[2]:lower()
+
+-- Define rune benefits
+local runeBenefits = {
+  uruz  = "Healing(G)",
+  fehu  = "Sleep(G)(T)(RB)",
+  thurisaz = "Ranged+No Flood(G)",
+  raidho = "Travel(G)",
+  kena = "Fear(G)(T)/Impatience(RB)",
+  gebo  = "Cutting(A)",
+  gebu = "Blunt(A)",
+  gular = "Stonewall(G)",
+  wunjo = "Cure Blind(G)(T)/Shivering+Ribs(RB)",
+  hugalaz = "Hailstorm(G)/Hail Dmg(RB)",
+  nauthiz = "Drain Water(G)",
+  isaz = "Balance+Hinder(G)/Epilepsy(RB)",
+  jera = "+1 STR +1 CON",
+  loshre = "Anorexia(G)(T)/Addition+HlthMana Drain(RB)",
+  algiz = "10% Resistance",
+  sowulu = "Damage(G)(T)/Limbdmg+Hlthleech(RB)",
+  tiwaz = "Def Strip(G)(T)/Gravity(G)/Resto Bal+Arm Brk(RB)",
+  berkana = "Health Regen",
+  nairat = "Entangle(G)(T)/Freeze(RB)",
+  eihwaz = "Dampen Vibes(G)/Mask Venom(RB)",
+  mannaz = "Cure Deaf(G)/Balance+Mana stop(RB)",
+  laguz = "Damage(RB)",
+  lagul = "Bleeding(RB)",
+  lagua = "Disembowel Dmg(RB)",
+  inguz = "Paralysis(G)(T)(RB)",
+  dagaz = "Curing(G)",
+  othala = "Anti Prism+Shield(G)",
+  pithakhan = "Mana(G)(T)(RB)",
+  sleizak = "Voyria(G)(T)/Lethargy-Nausea-Voyria(RB)",
+}
+
+local benefit = runeBenefits[rune] or "Unknown"
+local runeCap = rune:gsub("^%l", string.upper)
+
+-- Default target if we don't have a recent begin-line
+local target = "unknown"
+
+if regez.runeSketch.last and regez.runeSketch.last.rune == rune then
+  target = regez.runeSketch.last.target or target
+end
+
+-- Clear stored context immediately
+regez.runeSketch.last = nil
+
+-- Kill expiration timer if still active
+if regez.runeSketch.timer then
+  killTimer(regez.runeSketch.timer)
+  regez.runeSketch.timer = nil
+end
+
+deleteLine()
+
+cecho(string.format(
+  "\n&lt;light_slate_blue&gt;[GroundeCombat] &lt;cyan&gt;Sketched &lt;yellow&gt;%s (&lt;green&gt;%s) on &lt;white&gt;%s&lt;cyan&gt;.",
+  runeCap, benefit, target
+))</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>0</conditonLineDelta>
+				<mStayOpen>1</mStayOpen>
+				<mCommand></mCommand>
+				<packageName></packageName>
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile></mSoundFile>
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>^With a flourish, you finish sketching an? (\w+) rune\.$</string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>1</integer>
+				</regexCodePropertyList>
+			</Trigger>
+			<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>Battlefury Balance</name>
+				<script>grounde = grounde or {}
+grounde.bf_ready = true
+--tempTimer(3, ground.bf_ready = true)
+-- optional
+-- grounde.offenseTick()</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>0</conditonLineDelta>
+				<mStayOpen>0</mStayOpen>
+				<mCommand></mCommand>
+				<packageName></packageName>
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile></mSoundFile>
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>You may channel the fury of battle once again.</string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>3</integer>
+				</regexCodePropertyList>
+			</Trigger>
+			<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>Falcon Report</name>
+				<script>local person = matches[2]
+local cur = tonumber(matches[3]) or 0
+local max = tonumber(matches[4]) or 1
+if max &lt;= 0 then max = 1 end
+
+ak.knownmaxhealth = ak.knownmaxhealth or {}
+ak.knownmaxhealth[person] = max
+ak.currenthealth = cur
+ak.maxhealth = max
+
+local pct = math.floor((cur / max) * 100 + 0.5) -- rounded
+ak.healthpercent = pct
+
+cecho("\n&lt;light_slate_blue&gt;[GroundeCombat] &lt;white&gt;[&lt;yellow&gt;Health&lt;white&gt;]: &lt;green&gt;" .. pct .. "%")
+
+grounde.onFalconReport(personName, hpPercent)
+
+-- Optional: feed Grounde offense state
+if grounde and grounde.onFalconReport then
+  grounde.onFalconReport(person, pct)
+end
+
+ak.scoreup(person)</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>0</conditonLineDelta>
+				<mStayOpen>0</mStayOpen>
+				<mCommand></mCommand>
+				<packageName></packageName>
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile></mSoundFile>
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>^You sense through your connection with your falcon that she is pursuing ([\w'-]+), who has (\d+) health of a maximum of (\d+)\.$</string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>1</integer>
+				</regexCodePropertyList>
+			</Trigger>
+			<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>Engaged</name>
+				<script>grounde = grounde or {}
+
+local person = matches[2] or matches[1]
+if person then
+  person = person:gsub("[^%w'%-]", "")
+  grounde.engaged = true
+  grounde.engagedTarget = person
+  -- Optional debug:
+  cecho("\n&lt;light_slate_blue&gt;[GroundeCombat] Engaged: "..person)
+end
+</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>0</conditonLineDelta>
+				<mStayOpen>0</mStayOpen>
+				<mCommand></mCommand>
+				<packageName></packageName>
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile></mSoundFile>
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>^You move in to engage ([\w'\-]+)\.$</string>
+					<string>^As ([\w'\-]+) turns away from you, you draw upon the power of isaz</string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>1</integer>
+					<integer>2</integer>
+				</regexCodePropertyList>
+			</Trigger>
+			<Trigger isActive="yes" isFolder="no" isTempTrigger="no" isMultiline="no" isPerlSlashGOption="no" isColorizerTrigger="no" isFilterTrigger="no" isSoundTrigger="no" isColorTrigger="no" isColorTriggerFg="no" isColorTriggerBg="no">
+				<name>Lost Engage</name>
+				<script>grounde = grounde or {}
+
+if grounde.engaged then
+  grounde.engaged = false
+  grounde.engagedTarget = nil
+-- Optional debug:
+  cecho("\n&lt;light_slate_blue&gt;[GroundeCombat] Engagement cleared.")
+else
+  -- Already not engaged, do nothing.
+  grounde.engaged = false
+  grounde.engagedTarget = nil
+end
+</script>
+				<triggerType>0</triggerType>
+				<conditonLineDelta>0</conditonLineDelta>
+				<mStayOpen>0</mStayOpen>
+				<mCommand></mCommand>
+				<packageName></packageName>
+				<mFgColor>#ff0000</mFgColor>
+				<mBgColor>#ffff00</mBgColor>
+				<mSoundFile></mSoundFile>
+				<colorTriggerFgColor>#000000</colorTriggerFgColor>
+				<colorTriggerBgColor>#000000</colorTriggerBgColor>
+				<regexCodeList>
+					<string>^You drop back and ease the engagement\.$</string>
+					<string>^Ahh, I am truly sorry, but I do not see anyone by that name here\.$</string>
+					<string>^You detect nothing here by that name\.$</string>
+					<string>^Nothing can be seen here by that name\.$</string>
+					<string>^I do not recognise anything called that here\.$</string>
+					<string>^You cannot see that being here\.$</string>
+					<string>([\w'\-]+) leaves to the</string>
+					<string>([\w'\-]_) leaps majestically </string>
+				</regexCodeList>
+				<regexCodePropertyList>
+					<integer>1</integer>
+					<integer>1</integer>
+					<integer>1</integer>
+					<integer>1</integer>
+					<integer>1</integer>
+					<integer>1</integer>
+					<integer>2</integer>
+					<integer>2</integer>
+				</regexCodePropertyList>
+			</Trigger>
+		</TriggerGroup>
+	</TriggerPackage>
+	<TimerPackage />
+	<AliasPackage>
+		<AliasGroup isActive="yes" isFolder="yes">
+			<name>Runewarden</name>
+			<script></script>
+			<command></command>
+			<packageName></packageName>
+			<regex></regex>
+			<Alias isActive="yes" isFolder="no">
+				<name>Recover Footing</name>
+				<script>send("recover footing")</script>
+				<command></command>
+				<packageName></packageName>
+				<regex>^rf$</regex>
+			</Alias>
+			<Alias isActive="yes" isFolder="no">
+				<name>Discipline Aliases</name>
+				<script>discipline_alias(matches[2], matches[3])</script>
+				<command></command>
+				<packageName></packageName>
+				<regex>^(fcom|fa|fr|fsan|fl|fc|ftr|frep|fsl|fh|ff|fslp|ffr|fs|fg|ffo|ftk|fob|fwh|fst|frk|fret|we|fi|gr|rg|re|cl|ra|fy|rfy|bl|ub|bg|bc|sh|am|sf|ea|iq|dy|sww|df|udf|eg|dg)(?:\s+(.*))?$</regex>
+			</Alias>
+			<Alias isActive="yes" isFolder="no">
+				<name>Runelore Aliases</name>
+				<script>runelore_alias(matches[2], matches[3])</script>
+				<command></command>
+				<packageName></packageName>
+				<regex>^(rhelp|sm|sms|smg|smo|sk|ken|uru|feh|pit|jer|ing|wun|lagl|sow|alg|isa|ctt|st|sr|dag|gebu|gebo|gul|rai|rh|rl|rs|thu|lagu|hg|nau|man|oth|sle|tiw|ber|nai|eih|emp|cfg|cfs|csm|cem|cps|cpc|imp|upr|tun|empt|des|clm|rej|bis)(?:\s+(.*))?$</regex>
+			</Alias>
+			<Alias isActive="yes" isFolder="no">
+				<name>Weaponmastery 2H</name>
+				<script>weaponmastery_alias(matches[2], matches[3] or "")</script>
+				<command></command>
+				<packageName></packageName>
+				<regex>^(wm|env|wip|arc|cont|sl|oh|cv|sp|per|uh|up|hew|pul|dis|foc|disc|defl|clv|skc|rec|dev|br|ovr|imp|wdr|disem|fuh|foh|fsl|farc|fdev)(?:\s+(.*))?$</regex>
+			</Alias>
+			<Alias isActive="yes" isFolder="no">
+				<name>Offense Alias</name>
+				<script>if matches[1] == "atk" then
+  grounde.start()
+elseif matches[1] == "stap" then
+  grounde.stop()
+else end
+
+--grounde.offenseStep()
+--grounde.perceiveThenOffense()</script>
+				<command></command>
+				<packageName></packageName>
+				<regex>^(atk|stap)$</regex>
+			</Alias>
+			<Alias isActive="yes" isFolder="no">
+				<name>Falcon Slay</name>
+				<script>local t = (matches[2] and matches[2] ~= "" and matches[2]) or _G.target
+t = tostring(t or ""):gsub("^%s+",""):gsub("%s+$","")
+if t == "" then
+  cecho("\n&lt;red&gt;Usage: ;f &lt;target&gt;\n")
+  return
+end
+
+send(string.format("falcon track %s/falcon slay %s", t, t))</script>
+				<command></command>
+				<packageName></packageName>
+				<regex>^f(?:\s+(.+))?$</regex>
+			</Alias>
+			<Alias isActive="yes" isFolder="no">
+				<name>Engage Target</name>
+				<script>local t = (matches[2] and matches[2] ~= "" and matches[2]) or _G.target
+t = tostring(t or ""):gsub("^%s+",""):gsub("%s+$","")
+if t == "" then
+  cecho("\n&lt;red&gt;Usage: ;eng &lt;target&gt;\n")
+  return
+end
+
+send("engage " .. t)</script>
+				<command></command>
+				<packageName></packageName>
+				<regex>^eng(?:\s+(.+))?$</regex>
+			</Alias>
+			<Alias isActive="yes" isFolder="no">
+				<name>Aesa Ring</name>
+				<script>send("generosity|remove 511575|give 511575 to aesa|selfishness")</script>
+				<command></command>
+				<packageName></packageName>
+				<regex>^aesaring$</regex>
+			</Alias>
+		</AliasGroup>
+	</AliasPackage>
+	<ActionPackage />
+	<ScriptPackage>
+		<ScriptGroup isActive="yes" isFolder="yes">
+			<name>Runewarden</name>
+			<packageName></packageName>
+			<script></script>
+			<eventHandlerList />
+			<Script isActive="yes" isFolder="no">
+				<name>Discipline Aliases</name>
+				<packageName></packageName>
+				<script>local function trim(s) return (tostring(s or ""):gsub("^%s+",""):gsub("%s+$","")) end
+local function splitArgs(s)
+  local t = {}
+  s = trim(s)
+  for w in s:gmatch("%S+") do t[#t+1] = w end
+  return t
+end
+
+local function getTarget(arg1)
+  local t = trim(arg1 or "")
+  if t ~= "" then return t end
+  if type(_G.target) == "string" and trim(_G.target) ~= "" then return trim(_G.target) end
+  return nil
+end
+
+function discipline_alias(key, rest)
+  key = (key or ""):lower()
+  local a = splitArgs(rest)
+
+local function falcon_help()
+  cecho([[
+&lt;cyan&gt;Falcon shorthands&lt;/cyan&gt;
+  fcom            - show this help
+  fa                - FALCON ASSESS
+  fr                - FALCON RECALL
+  fsan              - FALCON SANCTUARY
+  fl                - FALCON LAND
+  fc                - FALCON CIRCLE
+  ftr [val]         - FALCON TRAIN IN STRENGTH/SPEED/STAMINA
+  frep              - FALCON REPORT
+  fsl [t]           - FALCON SLAY &lt;target&gt;   (uses `target` if omitted)
+  fh                - FALCON HUNT
+  ff &lt;hp&gt;           - FALCON FLEE &lt;hp&gt;
+  fslp              - FALCON SLEEP
+  ffr               - FALCON FEED RAT
+  fs  [t]           - FALCON SEEK &lt;target&gt;   (uses `target` if omitted)
+  fg                - FALCON GLANCE
+  ffo [t]           - FALCON FOLLOW &lt;target&gt; (uses `target` if omitted)
+  ftk [t]           - FALCON TRACK &lt;target&gt;  (uses `target` if omitted)
+  fst [t]           - FALCON STARTLE &lt;target&gt;(uses `target` if omitted)
+  frk [t]           - FALCON RAKE &lt;target&gt;   (uses `target` if omitted)
+  fret &lt;item&gt;       - FALCON RETRIEVE &lt;item&gt;
+  fob               - FALCON OBSERVE
+  fwh               - FALCON WARHAWK
+]])
+end
+
+  -- Falcon
+  if key == "fcom"   then falcon_help(); return end
+  if key == "fa"  then send("FALCON ASSESS"); return end
+  if key == "fr"  then send("FALCON RECALL"); return end
+  if key == "fsan"then send("FALCON SANCTUARY"); return end
+  if key == "fl"  then send("FALCON LAND"); return end
+  if key == "fc"  then send("FALCON CIRCLE"); return end
+  if key == "frep"then send("FALCON REPORT"); return end
+  if key == "fh"  then send("FALCON HUNT"); return end
+  if key == "fslp"then send("FALCON SLEEP"); return end
+  if key == "ffr" then send("FALCON FEED RAT"); return end
+  if key == "fg"  then send("FALCON GLANCE"); return end
+  if key == "fob" then send("FALCON OBSERVE"); return end
+  if key == "fwh" then send("FALCON WARHAWK"); return end
+
+  if key == "fsl" then
+    local t = getTarget(a[1]); if not t then cecho("\n&lt;yellow&gt;Usage: fsl &lt;target&gt;\n") return end
+    send("FALCON SLAY " .. t); return
+  end
+  
+  if key == "ftr" then 
+    local v = a[1]; if not v then cecho("\n&lt;yellow&gt;Usage: ff &lt;speed&gt;&lt;stamina&gt;&lt;strength&gt;\n") return end
+    send("FALCON TRAIN IN " .. v); return 
+  end
+
+  if key == "ff" then
+    local v = a[1]; if not v then cecho("\n&lt;yellow&gt;Usage: ff &lt;health&gt;\n") return end
+    send("FALCON FLEE " .. v); return
+  end
+
+  if key == "fs" then
+    local t = getTarget(a[1]); if not t then cecho("\n&lt;yellow&gt;Usage: fs &lt;target&gt;\n") return end
+    send("FALCON SEEK " .. t); return
+  end
+
+  if key == "ffo" then
+    local t = getTarget(a[1]); if not t then cecho("\n&lt;yellow&gt;Usage: ffo &lt;target&gt;\n") return end
+    send("FALCON FOLLOW " .. t); return
+  end
+
+  if key == "ftk" then
+    local t = getTarget(a[1]); if not t then cecho("\n&lt;yellow&gt;Usage: ftk &lt;target&gt;\n") return end
+    send("FALCON TRACK " .. t); return
+  end
+
+  if key == "fst" then
+    local t = getTarget(a[1]); if not t then cecho("\n&lt;yellow&gt;Usage: fst &lt;target&gt;\n") return end
+    send("FALCON STARTLE " .. t); return
+  end
+
+  if key == "frk" then
+    local t = getTarget(a[1]); if not t then cecho("\n&lt;yellow&gt;Usage: frk &lt;target&gt;\n") return end
+    send("FALCON RAKE " .. t); return
+  end
+
+  if key == "fret" then
+    local item = trim(rest):gsub("^%S+%s*", "") -- safe-ish; but we already split. We'll rebuild:
+    item = trim(table.concat(a, " "))
+    if item == "" then cecho("\n&lt;yellow&gt;Usage: fret &lt;item&gt;\n") return end
+    send("FALCON RETRIEVE " .. item); return
+  end
+
+  -- Self / utility
+  if key == "we" then send("WEATHERING"); return end
+  if key == "fi" then send("FITNESS"); return end
+  if key == "gr" then send("GRIP"); return end
+  if key == "rg" then send("RELAX GRIP"); return end
+  if key == "re" then send("RESISTANCE"); return end
+  if key == "cl" then send("CLOT"); return end
+  if key == "ra" then send("RAGE"); return end
+
+  if key == "fy" then
+    local v = (a[1] or "")
+    if v == "" then send("FURY") else send("FURY " .. v:upper()) end
+    return
+  end
+  if key == "rfy" then send("RELAX FURY"); return end
+
+  -- Block / Unblock
+  if key == "bl" then
+    local dir = a[1]; if not dir then cecho("\n&lt;yellow&gt;Usage: bl &lt;dir&gt;\n") return end
+    send("BLOCK " .. dir); return
+  end
+  if key == "ub" then send("UNBLOCK"); return end
+
+  -- Barge / Battlecry
+  if key == "bg" then
+    local t = getTarget(a[1])
+    local dir = a[2]
+    if not t or not dir then cecho("\n&lt;yellow&gt;Usage: bg &lt;target&gt; &lt;dir&gt;\n") return end
+    send("BARGE " .. t .. " " .. dir); return
+  end
+  if key == "bc" then
+    local t = getTarget(a[1]); if not t then cecho("\n&lt;yellow&gt;Usage: bc &lt;target&gt;\n") return end
+    send("BATTLECRY " .. t); return
+  end
+
+  -- Shoot / Aim
+  if key == "sh" then
+    local t = getTarget(a[1])
+    local dir = a[2]
+    if not t or not dir then cecho("\n&lt;yellow&gt;Usage: sh &lt;target&gt; &lt;dir&gt;\n") return end
+    send("SHOOT " .. t .. " " .. dir); return
+  end
+  if key == "am" then
+    local t = getTarget(a[1])
+    local dir = a[2]
+    if not t or not dir then cecho("\n&lt;yellow&gt;Usage: am &lt;target&gt; &lt;dir&gt;\n") return end
+    send("AIM " .. t .. " " .. dir); return
+  end
+
+  -- Stand firm
+  if key == "sf" then send("STAND FIRM"); return end
+
+  -- Quivers
+  if key == "ea" then
+    -- ea &lt;colour&gt; &lt;venom&gt;
+    -- ea &lt;num&gt; &lt;colour&gt; &lt;venom&gt;
+    if #a == 2 then
+      send("ENVENOM ARROWS " .. a[1] .. " " .. a[2]); return
+    elseif #a &gt;= 3 then
+      send("ENVENOM ARROWS " .. a[1] .. " " .. a[2] .. " " .. a[3]); return
+    else
+      cecho("\n&lt;yellow&gt;Usage: ea &lt;colour&gt; &lt;venom&gt;  OR  ea &lt;num&gt; &lt;colour&gt; &lt;venom&gt;\n")
+      return
+    end
+  end
+
+  if key == "iq" then send("INSPECT QUIVER"); return end
+
+  if key == "dy" then
+    local n, colour = a[1], a[2]
+    if not n or not colour then cecho("\n&lt;yellow&gt;Usage: dy &lt;num&gt; &lt;colour&gt;\n") return end
+    send("DYE " .. n .. " ARROWS " .. colour); return
+  end
+
+  if key == "sw" then
+    local colour = a[1]
+    if not colour then cecho("\n&lt;yellow&gt;Usage: sw &lt;colour|normal&gt;\n") return end
+    send("SWITCH " .. colour); return
+  end
+
+  -- Defend / Undefend
+  if key == "df" then
+    local t = getTarget(a[1]); if not t then cecho("\n&lt;yellow&gt;Usage: df &lt;target&gt;\n") return end
+    send("DEFEND " .. t); return
+  end
+  if key == "udf" then send("UNDEFEND"); return end
+
+  -- Engage / Disengage
+  if key == "eg" then
+    local t = getTarget(a[1]); if not t then cecho("\n&lt;yellow&gt;Usage: eg &lt;target&gt;\n") return end
+    send("ENGAGE " .. t); return
+  end
+  if key == "dg" then
+    local t = getTarget(a[1])
+    if t then send("DISENGAGE " .. t) else send("DISENGAGE") end
+    return
+  end
+end</script>
+				<eventHandlerList />
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>Runelore Aliases</name>
+				<packageName></packageName>
+				<script>local function trim(s) return (tostring(s or ""):gsub("^%s+",""):gsub("%s+$","")) end
+local function splitArgs(s)
+  local t = {}
+  s = trim(s)
+  for w in s:gmatch("%S+") do t[#t+1] = w end
+  return t
+end
+
+local function getTarget(arg1)
+  local t = trim(arg1 or "")
+  if t ~= "" then return t end
+  if type(_G.target) == "string" and trim(_G.target) ~= "" then return trim(_G.target) end
+  return nil
+end
+
+function runelore_alias(key, rest)
+  key = (key or ""):lower()
+  local a = splitArgs(rest)
+
+  -- =========================
+  -- HELP / CHEATSHEET
+  -- =========================
+  if key == "rhelp" or key == "rh" then
+  cecho("\n&lt;cyan&gt;==== Runelore Aliases Cheatsheet ====\n")
+
+  cecho("\n&lt;green&gt;-- Totems --\n")
+  cecho("  &lt;white&gt;ct                    &lt;grey&gt;-&gt; CARVE TOTEM\n")
+  cecho("  &lt;white&gt;st                    &lt;grey&gt;-&gt; STAND TOTEM\n")
+  cecho("  &lt;white&gt;imp                   &lt;grey&gt;-&gt; IMPLANT TOTEM\n")
+  cecho("  &lt;white&gt;upr                   &lt;grey&gt;-&gt; UPROOT TOTEM\n")
+  cecho("  &lt;white&gt;tun &lt;yellow&gt;[totem] [mode]    &lt;grey&gt;-&gt; TUNE [totem] ENEMIES|NONALLIES|NONMEMBERS\n")
+  cecho("  &lt;white&gt;des &lt;yellow&gt;[full phrase]     &lt;grey&gt;-&gt; DESIGNATE [full phrase]\n")
+  cecho("  &lt;white&gt;clm &lt;yellow&gt;[totem]           &lt;grey&gt;-&gt; CLAIM [totem]\n")
+  cecho("  &lt;white&gt;rej &lt;yellow&gt;[totem]           &lt;grey&gt;-&gt; REJECT [totem]\n")
+  cecho("  &lt;white&gt;sr  &lt;yellow&gt;[rune] [totem] [slot] &lt;grey&gt;-&gt; SKETCH [rune] ON [totem] ON SLOT [1-6]\n")
+
+  cecho("\n&lt;green&gt;-- Smudge --\n")
+  cecho("  &lt;white&gt;sm  &lt;yellow&gt;[totem]            &lt;grey&gt;-&gt; SMUDGE [totem]\n")
+  cecho("  &lt;white&gt;sms &lt;yellow&gt;[totem] [slot]     &lt;grey&gt;-&gt; SMUDGE [totem] SLOT [1-6]\n")
+  cecho("  &lt;white&gt;smg &lt;yellow&gt;[rune]             &lt;grey&gt;-&gt; SMUDGE GROUND [rune]\n")
+  cecho("  &lt;white&gt;smo &lt;yellow&gt;[rune]             &lt;grey&gt;-&gt; SMUDGE [rune] OFF ME\n")
+  cecho("  &lt;white&gt;csm &lt;yellow&gt;[runeblade] [rune] &lt;grey&gt;-&gt; SMUDGE [runeblade] [rune]\n")
+
+  cecho("\n&lt;green&gt;-- Generic Sketch --\n")
+  cecho("  &lt;white&gt;sk  &lt;yellow&gt;[rune] [target...] &lt;grey&gt;-&gt; SKETCH [RUNE] ON [TARGET...]\n")
+
+  cecho("\n&lt;green&gt;-- Sketch on Ground / Totems --\n")
+  cecho("  &lt;white&gt;ken &lt;yellow&gt;[ground|totem]     &lt;grey&gt;-&gt; SKETCH KENA ON GROUND|TOTEM\n")
+  cecho("  &lt;white&gt;feh &lt;yellow&gt;[ground|totem]     &lt;grey&gt;-&gt; SKETCH FEHU ON GROUND|TOTEM\n")
+  cecho("  &lt;white&gt;ing &lt;yellow&gt;[ground|totem]     &lt;grey&gt;-&gt; SKETCH INGUZ ON GROUND|TOTEM\n")
+  cecho("  &lt;white&gt;wun &lt;yellow&gt;[ground|totem]     &lt;grey&gt;-&gt; SKETCH WUNJO ON GROUND|TOTEM\n")
+  cecho("  &lt;white&gt;sow &lt;yellow&gt;[ground|totem]     &lt;grey&gt;-&gt; SKETCH SOWULU ON GROUND|TOTEM\n")
+  cecho("  &lt;white&gt;man &lt;yellow&gt;[ground|totem]     &lt;grey&gt;-&gt; SKETCH MANNAZ ON GROUND|TOTEM\n")
+  cecho("  &lt;white&gt;sle &lt;yellow&gt;[ground|totem]     &lt;grey&gt;-&gt; SKETCH SLEIZAK ON GROUND|TOTEM\n")
+  cecho("  &lt;white&gt;tiw &lt;yellow&gt;[ground|totem]     &lt;grey&gt;-&gt; SKETCH TIWAZ ON GROUND|TOTEM\n")
+  cecho("  &lt;white&gt;los &lt;yellow&gt;[ground|totem]     &lt;grey&gt;-&gt; SKETCH LOSHRE ON GROUND|TOTEM\n")
+  cecho("  &lt;white&gt;nai &lt;yellow&gt;[ground|totem]     &lt;grey&gt;-&gt; SKETCH NAIRAT ON GROUND|TOTEM\n")
+  cecho("  &lt;white&gt;pit &lt;yellow&gt;[ground|totem]     &lt;grey&gt;-&gt; SKETCH PITHAKHAN ON GROUND|TOTEM\n")
+  cecho("  &lt;white&gt;hug ground             &lt;grey&gt;-&gt; SKETCH HUGALAZ ON GROUND\n")
+  cecho("  &lt;white&gt;eih ground             &lt;grey&gt;-&gt; SKETCH EIHWAZ ON GROUND\n")
+  cecho("  &lt;white&gt;uru                    &lt;grey&gt;-&gt; SKETCH URUZ ON GROUND\n")
+  cecho("  &lt;white&gt;dag                    &lt;grey&gt;-&gt; SKETCH DAGAZ ON GROUND\n")
+  cecho("  &lt;white&gt;isa                    &lt;grey&gt;-&gt; SKETCH ISAZ ON GROUND\n")
+  cecho("  &lt;white&gt;oth                    &lt;grey&gt;-&gt; SKETCH OTHALA ON GROUND\n")
+  cecho("  &lt;white&gt;nau                    &lt;grey&gt;-&gt; SKETCH NAUTHIZ ON GROUND\n")
+  cecho("  &lt;white&gt;rai                    &lt;grey&gt;-&gt; SKETCH RAIDO ON GROUND\n")
+  cecho("  &lt;white&gt;gul &lt;yellow&gt;[direction]        &lt;grey&gt;-&gt; SKETCH GULAR ON GROUND [direction]\n")
+  cecho("  &lt;white&gt;thu &lt;yellow&gt;[target]           &lt;grey&gt;-&gt; SKETCH THURISAZ ON GROUND FOR [target]\n")
+
+  cecho("\n&lt;green&gt;-- Sketch on Me / Target --\n")
+  cecho("  &lt;white&gt;jer &lt;yellow&gt;[me|target]        &lt;grey&gt;-&gt; SKETCH JERA ON ME|TARGET\n")
+  cecho("  &lt;white&gt;alg &lt;yellow&gt;[me|target]        &lt;grey&gt;-&gt; SKETCH ALGIZ ON ME|TARGET\n")
+  cecho("  &lt;white&gt;ber &lt;yellow&gt;[me|target]        &lt;grey&gt;-&gt; SKETCH BERKANA ON ME|TARGET\n")
+
+  cecho("\n&lt;green&gt;-- Sketch on Weapons --\n")
+  cecho("  &lt;white&gt;lagl &lt;yellow&gt;[weapon]          &lt;grey&gt;-&gt; SKETCH LAGUL ON [weapon]\n")
+  cecho("  &lt;white&gt;lagu &lt;yellow&gt;[weapon]          &lt;grey&gt;-&gt; SKETCH LAGUA ON [weapon]\n")
+  cecho("  &lt;white&gt;lagz &lt;yellow&gt;[weapon]          &lt;grey&gt;-&gt; SKETCH LAGUZ ON [weapon]\n")
+  cecho("  &lt;white&gt;nai w &lt;yellow&gt;[weapon]         &lt;grey&gt;-&gt; SKETCH NAIRAT ON [weapon]\n")
+  cecho("  &lt;white&gt;pit w &lt;yellow&gt;[weapon]         &lt;grey&gt;-&gt; SKETCH PITHAKHAN ON [weapon]\n")
+  cecho("  &lt;white&gt;hug w &lt;yellow&gt;[weapon]         &lt;grey&gt;-&gt; SKETCH HUGALAZ ON [weapon]\n")
+  cecho("  &lt;white&gt;eih w &lt;yellow&gt;[weapon]         &lt;grey&gt;-&gt; SKETCH EIHWAZ ON [weapon]\n")
+
+  cecho("\n&lt;green&gt;-- Sketch on Armour --\n")
+  cecho("  &lt;white&gt;gebu &lt;yellow&gt;[armour]          &lt;grey&gt;-&gt; SKETCH GEBU ON [armour]\n")
+  cecho("  &lt;white&gt;gebo &lt;yellow&gt;[armour]          &lt;grey&gt;-&gt; SKETCH GEBO ON [armour]\n")
+
+  cecho("\n&lt;green&gt;-- Empower / Configuration --\n")
+  cecho("  &lt;white&gt;emp &lt;yellow&gt;[item]             &lt;grey&gt;-&gt; EMPOWER [item]\n")
+  cecho("  &lt;white&gt;empt &lt;yellow&gt;[totem]           &lt;grey&gt;-&gt; EMPOWER TOTEM [totem]\n")
+  cecho("  &lt;white&gt;cem &lt;yellow&gt;[rune]             &lt;grey&gt;-&gt; EMPOWER [rune]\n")
+  cecho("  &lt;white&gt;cps &lt;yellow&gt;[r1] [r2] [r3]     &lt;grey&gt;-&gt; EMPOWER PRIORITY SET [r1] [r2] [r3]\n")
+  cecho("  &lt;white&gt;cpc                    &lt;grey&gt;-&gt; EMPOWER PRIORITY CLEAR\n")
+  cecho("  &lt;white&gt;cfg &lt;yellow&gt;[core] [r1] [r2] [r3] &lt;grey&gt;-&gt; SKETCH CONFIGURATION ...\n")
+
+  cecho("\n&lt;green&gt;-- Raido Helpers --\n")
+  cecho("  &lt;white&gt;rh                     &lt;grey&gt;-&gt; SAY RIDE HOME\n")
+  cecho("  &lt;white&gt;rl                     &lt;grey&gt;-&gt; RAIDO LOCATE\n")
+  cecho("  &lt;white&gt;rs                     &lt;grey&gt;-&gt; RAIDO SEVER\n")
+
+  cecho("\n&lt;green&gt;-- Combat --\n")
+  cecho("  &lt;white&gt;bis &lt;yellow&gt;[target] [venom]   &lt;grey&gt;-&gt; BISECT [target] [venom]\n")
+
+  cecho("\n&lt;cyan&gt;Tip: &lt;grey&gt;Most sketch aliases accept &lt;yellow&gt;GROUND&lt;grey&gt; or a totem name.\n")
+end
+  
+  -- =========================
+  -- SMUDGE variants
+  -- =========================
+  -- sm &lt;totem&gt;
+  if key == "sm" then
+    local x = a[1]
+    if not x then cecho("\n&lt;yellow&gt;Usage: sm &lt;totem&gt;\n") return end
+    send("SMUDGE " .. x); return
+  end
+
+  -- sms &lt;totem&gt; &lt;slot#&gt;
+  if key == "sms" then
+    local totem, slot = a[1], a[2]
+    if not totem or not slot then cecho("\n&lt;yellow&gt;Usage: sms &lt;totem&gt; &lt;1-6&gt;\n") return end
+    send("SMUDGE " .. totem .. " SLOT " .. slot); return
+  end
+
+  -- smg [rune]   (blank = all ground runes, per SMUDGE GROUND)
+  if key == "smg" then
+    local rune = a[1]
+    if rune then send("SMUDGE GROUND " .. rune) else send("SMUDGE GROUND") end
+    return
+  end
+
+  -- smo &lt;rune&gt;  (SMUDGE &lt;rune&gt; OFF ME)
+  if key == "smo" then
+    local rune = a[1]
+    if not rune then cecho("\n&lt;yellow&gt;Usage: smo &lt;rune&gt;\n") return end
+    send("SMUDGE " .. rune .. " OFF ME"); return
+  end
+
+  -- =========================
+  -- Generic sketch
+  -- =========================
+  -- sk &lt;rune&gt; &lt;on&gt; &lt;thing...&gt;
+  -- expands to: SKETCH &lt;rune&gt; ON &lt;THING...&gt;
+  if key == "sk" then
+    local rune = a[1]
+    if not rune then cecho("\n&lt;yellow&gt;Usage: sk &lt;rune&gt; &lt;on target&gt;\nExample: sk kena ground\n\n") return end
+    table.remove(a, 1)
+    local on = trim(table.concat(a, " "))
+    if on == "" then cecho("\n&lt;yellow&gt;Usage: sk &lt;rune&gt; &lt;on target&gt;\n\n") return end
+    send("SKETCH " .. rune:upper() .. " ON " .. on:upper()); return
+  end
+
+  -- =========================
+  -- Common rune shorthands
+  -- =========================
+  -- Ground/totem runes: &lt;key&gt; [ground|&lt;totem&gt;]   default: GROUND
+  local function sketchGroundOrTotem(rune)
+    local where = a[1]
+    if not where then where = "GROUND" end
+    send("SKETCH " .. rune .. " ON " .. where:upper())
+  end
+
+  -- Me/target runes: &lt;key&gt; [me|&lt;target&gt;] default: ME
+  local function sketchMeOrTarget(rune)
+    local who = a[1]
+    if not who or who:lower() == "me" then
+      send("SKETCH " .. rune .. " ON ME")
+      return
+    end
+    local t = getTarget(who)
+    if not t then cecho("\n&lt;yellow&gt;Usage: " .. key .. " me|&lt;target&gt;\n") return end
+    send("SKETCH " .. rune .. " ON " .. t)
+  end
+
+  -- Weapon runes: &lt;key&gt; &lt;weapon&gt;
+  local function sketchOnWeapon(rune)
+    local w = a[1]
+    if not w then cecho("\n&lt;yellow&gt;Usage: " .. key .. " &lt;weapon&gt;\n") return end
+    send("SKETCH " .. rune .. " ON " .. w)
+  end
+
+  -- KENA / URUZ / FEHU / PITHAKHAN / INGUZ / WUNJO / SOWULU / MANNAZ / SLEIZAK / TIWAZ / LOSHRE
+  if key == "ken" then sketchGroundOrTotem("KENA"); return end
+  if key == "uru" then send("SKETCH URUZ ON GROUND"); return end
+  if key == "feh" then sketchGroundOrTotem("FEHU"); return end
+
+  if key == "pit" then
+    -- pit ground|&lt;totem&gt;  OR  pit w &lt;weapon&gt;
+    if (a[1] or ""):lower() == "w" then
+      local w = a[2]; if not w then cecho("\n&lt;yellow&gt;Usage: pit w &lt;weapon&gt;\n") return end
+      send("SKETCH PITHAKHAN ON " .. w); return
+    end
+    sketchGroundOrTotem("PITHAKHAN"); return
+  end
+
+  if key == "jer" then sketchMeOrTarget("JERA"); return end
+  if key == "ing" then sketchGroundOrTotem("INGUZ"); return end
+  if key == "wun" then sketchGroundOrTotem("WUNJO"); return end
+
+  if key == "sow" then sketchGroundOrTotem("SOWULU"); return end
+  if key == "man" then sketchGroundOrTotem("MANNAZ"); return end
+  if key == "sle" then sketchGroundOrTotem("SLEIZAK"); return end
+  if key == "tiw" then sketchGroundOrTotem("TIWAZ"); return end
+
+  if key == "alg" then sketchMeOrTarget("ALGIZ"); return end
+  if key == "dag" then send("SKETCH DAGAZ ON GROUND"); return end
+  if key == "isa" then send("SKETCH ISAZ ON GROUND"); return end
+  if key == "oth" then send("SKETCH OTHALA ON GROUND"); return end
+  if key == "nau" then send("SKETCH NAUTHIZ ON GROUND"); return end
+
+  if key == "ber" then sketchMeOrTarget("BERKANA"); return end
+
+  if key == "gul" then
+    local dir = a[1]
+    if not dir then cecho("\n&lt;yellow&gt;Usage: gul &lt;direction&gt;\n") return end
+    send("SKETCH GULAR ON GROUND " .. dir); return
+  end
+
+  if key == "thu" then
+    local t = getTarget(a[1])
+    if not t then cecho("\n&lt;yellow&gt;Usage: thu &lt;target&gt;\n") return end
+    send("SKETCH THURISAZ ON GROUND FOR " .. t); return
+  end
+
+  -- Armour runes
+  if key == "gebu" then
+    local arm = trim(table.concat(a, " "))
+    if arm == "" then cecho("\n&lt;yellow&gt;Usage: gebu &lt;armour&gt;\n") return end
+    send("SKETCH GEBU ON " .. arm); return
+  end
+  if key == "gebo" then
+    local arm = trim(table.concat(a, " "))
+    if arm == "" then cecho("\n&lt;yellow&gt;Usage: gebo &lt;armour&gt;\n") return end
+    send("SKETCH GEBO ON " .. arm); return
+  end
+
+  -- Weapon runes (runeblade core/perma)
+  if key == "lagl" then sketchOnWeapon("LAGUL"); return end   -- bleeding
+  if key == "lagu" then sketchOnWeapon("LAGUA"); return end   -- disembowel amp / blunt numb
+  if key == "lagz" then sketchOnWeapon("LAGUZ"); return end   -- limb damage (NOTE: add lagz key if you want)
+  if key == "hug" then
+    -- hug ground  OR  hug w &lt;weapon&gt;
+    if (a[1] or ""):lower() == "w" then
+      local w = a[2]; if not w then cecho("\n&lt;yellow&gt;Usage: hug w &lt;weapon&gt;\n") return end
+      send("SKETCH HUGALAZ ON " .. w); return
+    end
+    send("SKETCH HUGALAZ ON GROUND"); return
+  end
+  if key == "nai" then
+    -- nai ground|&lt;totem&gt;  OR nai w &lt;weapon&gt;
+    if (a[1] or ""):lower() == "w" then
+      local w = a[2]; if not w then cecho("\n&lt;yellow&gt;Usage: nai w &lt;weapon&gt;\n") return end
+      send("SKETCH NAIRAT ON " .. w); return
+    end
+    sketchGroundOrTotem("NAIRAT"); return
+  end
+  if key == "eih" then
+    -- eih ground  OR eih w &lt;weapon&gt;
+    if (a[1] or ""):lower() == "w" then
+      local w = a[2]; if not w then cecho("\n&lt;yellow&gt;Usage: eih w &lt;weapon&gt;\n") return end
+      send("SKETCH EIHWAZ ON " .. w); return
+    end
+    send("SKETCH EIHWAZ ON GROUND"); return
+  end
+  if key == "los" then sketchGroundOrTotem("LOSHRE"); return end
+
+  -- =========================
+  -- Totems
+  -- =========================
+  if key == "ct" then send("CARVE TOTEM"); return end
+  if key == "st" then send("STAND TOTEM"); return end
+  -- sr &lt;rune&gt; &lt;totem&gt; &lt;slot&gt;
+  if key == "sr" then
+    local rune, totem, slot = a[1], a[2], a[3]
+    if not rune or not totem or not slot then cecho("\n&lt;yellow&gt;Usage: sr &lt;rune&gt; &lt;totem&gt; &lt;1-6&gt;\n") return end
+    send("SKETCH " .. rune:upper() .. " ON " .. totem .. " ON SLOT " .. slot); return
+  end
+
+  -- =========================
+  -- Raido helpers
+  -- =========================
+  if key == "rai" then send("SKETCH RAIDO ON GROUND"); return end
+  if key == "rh"  then send("SAY RIDE HOME"); return end
+  if key == "rl"  then send("RAIDO LOCATE"); return end
+  if key == "rs"  then send("RAIDO SEVER"); return end
+
+  -- =========================
+  -- Empower / Runicarmour / Runeblades
+  -- =========================
+  -- emp &lt;item&gt;   (armour or weapon)
+  if key == "emp" then
+    local item = trim(table.concat(a, " "))
+    if item == "" then cecho("\n&lt;yellow&gt;Usage: emp &lt;armour|weapon&gt;\n") return end
+    send("EMPOWER " .. item); return
+  end
+
+  -- empt &lt;totem&gt;
+  if key == "empt" then
+    local t = a[1]
+    if not t then cecho("\n&lt;yellow&gt;Usage: empt &lt;totem&gt;\n") return end
+    send("EMPOWER TOTEM " .. t); return
+  end
+
+  -- =========================
+  -- Configuration
+  -- =========================
+  -- cfg &lt;runeblade/left/right/wielded&gt; &lt;r1&gt; &lt;r2&gt; [r3]
+  if key == "cfg" then
+    if not a[1] or not a[2] or not a[3] then
+      cecho("\n&lt;yellow&gt;Usage: cfg &lt;runeblade|left|right|wielded&gt; &lt;r1&gt; &lt;r2&gt; [r3]\n") return
+    end
+    local core = a[1]
+    local r1, r2, r3 = a[2], a[3], a[4]
+    local cmd = "SKETCH CONFIGURATION " .. core .. " " .. r1 .. " " .. r2
+    if r3 then cmd = cmd .. " " .. r3 end
+    send(cmd); return
+  end
+
+  -- csm &lt;runeblade&gt; &lt;rune&gt;   (SMUDGE &lt;runeblade&gt; &lt;rune in configuration&gt;)
+  if key == "csm" then
+    local rb, r = a[1], a[2]
+    if not rb or not r then cecho("\n&lt;yellow&gt;Usage: csm &lt;runeblade&gt; &lt;rune&gt;\n") return end
+    send("SMUDGE " .. rb .. " " .. r); return
+  end
+
+  -- cem &lt;rune&gt;   (EMPOWER &lt;rune&gt;)
+  if key == "cem" then
+    local r = a[1]
+    if not r then cecho("\n&lt;yellow&gt;Usage: cem &lt;rune&gt;\n") return end
+    send("EMPOWER " .. r); return
+  end
+
+  -- cps &lt;r1&gt; &lt;r2&gt; &lt;r3&gt;  (EMPOWER PRIORITY SET ...)
+  if key == "cps" then
+    if not a[1] or not a[2] or not a[3] then cecho("\n&lt;yellow&gt;Usage: cps &lt;r1&gt; &lt;r2&gt; &lt;r3&gt;\n") return end
+    send("EMPOWER PRIORITY SET " .. a[1] .. " " .. a[2] .. " " .. a[3]); return
+  end
+  -- cpc (EMPOWER PRIORITY CLEAR)
+  if key == "cpc" then send("EMPOWER PRIORITY CLEAR"); return end
+
+  -- =========================
+  -- Implant / Uproot / Tune
+  -- =========================
+  if key == "imp" then send("IMPLANT TOTEM"); return end
+  if key == "upr" then send("UPROOT TOTEM"); return end
+  -- tun &lt;totem&gt; enemies|nonallies|nonmembers
+  if key == "tun" then
+    local totem = a[1]
+    local mode = (a[2] or ""):upper()
+    if not totem or mode == "" then
+      cecho("\n&lt;yellow&gt;Usage: tun &lt;totem&gt; enemies|nonallies|nonmembers\n") return
+    end
+    send("TUNE " .. totem .. " " .. mode); return
+  end
+
+  -- =========================
+  -- Designate / Claim / Reject
+  -- =========================
+  -- des &lt;person|org...&gt; &lt;totem&gt;
+  -- (simple helper; for Orders you can type full text after des)
+  if key == "des" then
+    -- Expect user supplies full phrase as needed:
+    -- des &lt;person&gt; as owner of &lt;totem&gt;
+    -- des &lt;organisation&gt; as owner of &lt;totem&gt;
+    local phrase = trim(table.concat(a, " "))
+    if phrase == "" then
+      cecho("\n&lt;yellow&gt;Usage: des &lt;full designate command after DESIGNATE&gt;\nExample: des Bob AS OWNER OF mytotem\n\n")
+      return
+    end
+    send("DESIGNATE " .. phrase); return
+  end
+  if key == "clm" then
+    local totem = a[1]; if not totem then cecho("\n&lt;yellow&gt;Usage: clm &lt;totem&gt;\n") return end
+    send("CLAIM " .. totem); return
+  end
+  if key == "rej" then
+    local totem = a[1]; if not totem then cecho("\n&lt;yellow&gt;Usage: rej &lt;totem&gt;\n") return end
+    send("REJECT " .. totem); return
+  end
+
+  -- =========================
+  -- Bisect
+  -- =========================
+  if key == "bis" then
+    local t = getTarget(a[1])
+    local venom = a[2]
+    if not t then cecho("\n&lt;yellow&gt;Usage: bis &lt;target&gt; [venom]\n") return end
+    if venom then send("BISECT " .. t .. " " .. venom) else send("BISECT " .. t) end
+    return
+  end
+
+  cecho("\n&lt;red&gt;Unknown runelore shorthand: " .. key .. "\n")
+end</script>
+				<eventHandlerList />
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>Weaponmastery 2H</name>
+				<packageName></packageName>
+				<script>-- ============================================================
+-- Weaponmastery 2H (Grounde) - Psion-style single-line send
+-- Separator is hard-set to "/"
+-- ============================================================
+
+grounde = grounde or {}
+grounde.wm = grounde.wm or {}
+grounde.wm._lock = grounde.wm._lock or false
+grounde.wm._last = grounde.wm._last or { t = 0, s = "" }
+
+local SEP = "/"
+
+local function gtrim(s) return (tostring(s or ""):gsub("^%s+",""):gsub("%s+$","")) end
+local function splitArgs(s)
+  local t = {}
+  s = gtrim(s)
+  for w in s:gmatch("%S+") do t[#t+1] = w end
+  return t
+end
+
+local function getTarget(arg1)
+  local t = gtrim(arg1 or "")
+  if t ~= "" then return t end
+  if type(_G.target) == "string" and gtrim(_G.target) ~= "" then return gtrim(_G.target) end
+  return nil
+end
+
+local function cqSetAlias(name, body)
+  send("cq all|setalias " .. name .. " " .. body)
+end
+
+local function shouldBlock(signature)
+  local now = getEpoch() -- ms
+  signature = tostring(signature or "")
+  if grounde.wm._last.s == signature and (now - grounde.wm._last.t) &lt; 250 then
+    return true
+  end
+  grounde.wm._last.s = signature
+  grounde.wm._last.t = now
+  return false
+end
+
+function grounde.wm.queueChain(cmds, queue)
+  if grounde.wm._lock then return end
+  grounde.wm._lock = true
+  tempTimer(0.20, function() grounde.wm._lock = false end)
+
+  if type(cmds) ~= "table" or #cmds == 0 then return end
+
+  local filtered = {}
+  for _, c in ipairs(cmds) do
+    c = gtrim(c)
+    if c ~= "" then filtered[#filtered+1] = c end
+  end
+  if #filtered == 0 then return end
+
+  local chain = table.concat(filtered, SEP)
+  local q = gtrim(queue or "eqbal")
+  if q == "" then q = "eqbal" end
+
+  local sig = q .. "|" .. chain
+  if shouldBlock(sig) then return end
+
+  cqSetAlias("wmfast", chain)
+  send("queue addclearfull " .. q .. " wmfast")
+end
+
+function grounde.wm.fast2h(stance, attackCmd, queue)
+  stance = (stance or ""):lower()
+  if stance ~= "speed" and stance ~= "precision" then return end
+  attackCmd = gtrim(attackCmd)
+  if attackCmd == "" then return end
+
+  grounde.wm.queueChain({
+    "recover footing",
+    "battlefury focus " .. stance,
+    attackCmd
+  }, queue or "eqbal")
+end
+
+local function wm_help()
+  cecho([[
+&lt;cyan&gt;Weaponmastery (2H) shorthands&lt;/cyan&gt;
+
+Normal:
+  wm, env, wipe, arc, cont, per, up, dis, foc, ovr,
+  sl, oh, uh, cv, sp, hew, pul, clv, skc, br, dev,
+  imp, wdr, disem, rec, disc, defl
+
+Fast (one queued action; uses "/" separator):
+  fuh  &lt;speed|precision&gt; [t]        - footing/focus/UNDERHAND
+  foh  &lt;speed|precision&gt; [t]        - footing/focus/OVERHAND
+  fsl  &lt;speed|precision&gt; [t] [ven]  - footing/focus/SLAUGHTER
+  farc &lt;speed|precision&gt; [t] [ven]  - footing/focus/ARC (room if no target)
+  fdev &lt;speed&gt; arms|legs [t] [ven]  - footing/focus(speed)/DEVASTATE
+]])
+end
+
+function weaponmastery_alias(key, rest)
+  key = (key or ""):lower()
+  local a = splitArgs(rest)
+
+  if key == "wm" then wm_help(); return end
+
+  -- ENVENOM / WIPE
+  if key == "env" then
+    local weapon, venom = a[1], a[2]
+    if not weapon or not venom then cecho("\n&lt;yellow&gt;Usage: env &lt;weapon&gt; &lt;venom&gt;\n") return end
+    send("ENVENOM " .. weapon .. " WITH " .. venom); return
+  end
+  if key == "wipe" then
+    local weapon = a[1]
+    if not weapon then cecho("\n&lt;yellow&gt;Usage: wipe &lt;weapon&gt;\n") return end
+    send("WIPE " .. weapon); return
+  end
+
+  -- ARC
+  if key == "arc" then
+    if #a == 0 then send("ARC"); return end
+    if #a == 1 then send("ARC " .. a[1]); return end
+    local t = getTarget(a[1])
+    local venom = a[2]
+    if not t then cecho("\n&lt;yellow&gt;Usage: arc [&lt;target&gt;] [venom]\n") return end
+    if venom then send("ARC " .. t .. " " .. venom) else send("ARC " .. t) end
+    return
+  end
+
+  -- Battlefury
+  if key == "cont" then send("BATTLEFURY CONTINUATION"); return end
+  if key == "per" then
+    local t = getTarget(a[1]); if not t then cecho("\n&lt;yellow&gt;Usage: per &lt;target&gt;\n") return end
+    send("BATTLEFURY PERCEIVE " .. t); return
+  end
+  if key == "up" then
+    local t = getTarget(a[1]); if not t then cecho("\n&lt;yellow&gt;Usage: up &lt;target&gt;\n") return end
+    send("BATTLEFURY UPSET " .. t); return
+  end
+  if key == "dis" then
+    local t = getTarget(a[1]); if not t then cecho("\n&lt;yellow&gt;Usage: dis &lt;target&gt;\n") return end
+    send("BATTLEFURY DISTRACT " .. t); return
+  end
+  if key == "foc" then
+    local v = (a[1] or ""):upper()
+    if v ~= "SPEED" and v ~= "PRECISION" then cecho("\n&lt;yellow&gt;Usage: foc speed|precision\n") return end
+    send("BATTLEFURY FOCUS " .. v); return
+  end
+  if key == "ovr" then
+    local t = getTarget(a[1]); if not t then cecho("\n&lt;yellow&gt;Usage: ovr &lt;target&gt;\n") return end
+    send("BATTLEFURY OVERWHELM " .. t); return
+  end
+
+  -- Core attacks
+  if key == "sl" then
+    local t = getTarget(a[1]); if not t then cecho("\n&lt;yellow&gt;Usage: sl &lt;target&gt; [venom]\n") return end
+    local venom = a[2]
+    if venom then send("SLAUGHTER " .. t .. " " .. venom) else send("SLAUGHTER " .. t) end
+    return
+  end
+  if key == "oh" then
+    local t = getTarget(a[1]); if not t then cecho("\n&lt;yellow&gt;Usage: oh &lt;target&gt;\n") return end
+    send("OVERHAND " .. t); return
+  end
+  if key == "uh" then
+    local t = getTarget(a[1]); if not t then cecho("\n&lt;yellow&gt;Usage: uh &lt;target&gt;\n") return end
+    send("UNDERHAND " .. t); return
+  end
+  if key == "cv" then
+    local t = getTarget(a[1]); if not t then cecho("\n&lt;yellow&gt;Usage: cv &lt;target&gt;\n") return end
+    send("CARVE " .. t); return
+  end
+  if key == "sp" then
+    local t = getTarget(a[1]); if not t then cecho("\n&lt;yellow&gt;Usage: sp &lt;target&gt;\n") return end
+    send("SPLINTER " .. t); return
+  end
+
+  -- Limb strikes
+  if key == "hew" then
+    local t, side, limb
+    if #a == 2 then
+      t = getTarget(nil)
+      side, limb = a[1], a[2]
+    else
+      t = getTarget(a[1])
+      side, limb = a[2], a[3]
+    end
+    if not t or not side or not limb then cecho("\n&lt;yellow&gt;Usage: hew [target] &lt;left|right&gt; &lt;arm|leg&gt;\n") return end
+    send("HEW " .. t .. " " .. side:upper() .. " " .. limb:upper()); return
+  end
+  if key == "pul" then
+    local t, side, limb
+    if #a == 2 then
+      t = getTarget(nil)
+      side, limb = a[1], a[2]
+    else
+      t = getTarget(a[1])
+      side, limb = a[2], a[3]
+    end
+    if not t or not side or not limb then cecho("\n&lt;yellow&gt;Usage: pul [target] &lt;left|right&gt; &lt;arm|leg&gt;\n") return end
+    send("PULVERISE " .. t .. " " .. side:upper() .. " " .. limb:upper()); return
+  end
+
+  -- Finishers / specials
+  if key == "clv" then
+    local t = getTarget(a[1]); if not t then cecho("\n&lt;yellow&gt;Usage: clv &lt;target&gt;\n") return end
+    send("CLEAVE " .. t); return
+  end
+  if key == "skc" then
+    local t = getTarget(a[1]); if not t then cecho("\n&lt;yellow&gt;Usage: skc &lt;target&gt;\n") return end
+    send("SKULLCRUSH " .. t); return
+  end
+  if key == "br" then
+    local t = getTarget(a[1]); if not t then cecho("\n&lt;yellow&gt;Usage: br &lt;target&gt;\n") return end
+    send("BRAIN " .. t); return
+  end
+
+  if key == "dev" then
+    local t, zone, venom
+    if #a == 1 then
+      t = getTarget(nil)
+      zone = a[1]
+    else
+      t = getTarget(a[1])
+      zone = a[2]
+      venom = a[3]
+    end
+    if not t or not zone then cecho("\n&lt;yellow&gt;Usage: dev [target] arms|legs [venom]\n") return end
+    zone = zone:upper()
+    if zone ~= "ARMS" and zone ~= "LEGS" then cecho("\n&lt;yellow&gt;dev expects ARMS or LEGS\n") return end
+    local cmd = "DEVASTATE " .. t .. " " .. zone
+    if venom then cmd = cmd .. " " .. venom end
+    send(cmd); return
+  end
+
+  if key == "imp" then
+    local t = getTarget(a[1]); if not t then cecho("\n&lt;yellow&gt;Usage: imp &lt;target&gt;\n") return end
+    send("IMPALE " .. t); return
+  end
+  if key == "wdr" then send("WITHDRAW BLADE"); return end
+  if key == "disem" then
+    local t = getTarget(a[1]); if not t then cecho("\n&lt;yellow&gt;Usage: disem &lt;target&gt;\n") return end
+    send("DISEMBOWEL " .. t); return
+  end
+
+  -- Utility
+  if key == "rec" then send("RECOVER FOOTING"); return end
+  if key == "disc" then send("DISCIPLINE"); return end
+  if key == "defl" then send("DEFLECT"); return end
+
+  -- ----------------------------
+  -- FAST (Psion-style)
+  -- ----------------------------
+  if key == "fuh" then
+    local stance = a[1]
+    local t = getTarget(a[2])
+    if not stance then cecho("\n&lt;yellow&gt;Usage: fuh &lt;speed|precision&gt; [target]\n") return end
+    if not t then cecho("\n&lt;yellow&gt;fuh requires a target (or global target)\n") return end
+    grounde.wm.fast2h(stance, "UNDERHAND " .. t, "eqbal")
+    return
+  end
+
+  if key == "foh" then
+    local stance = a[1]
+    local t = getTarget(a[2])
+    if not stance then cecho("\n&lt;yellow&gt;Usage: foh &lt;speed|precision&gt; [target]\n") return end
+    if not t then cecho("\n&lt;yellow&gt;foh requires a target (or global target)\n") return end
+    grounde.wm.fast2h(stance, "OVERHAND " .. t, "eqbal")
+    return
+  end
+
+  if key == "fsl" then
+    local stance = a[1]
+    local t = getTarget(a[2])
+    local venom = a[3]
+    if not stance then cecho("\n&lt;yellow&gt;Usage: fsl &lt;speed|precision&gt; [target] [venom]\n") return end
+    if not t then cecho("\n&lt;yellow&gt;fsl requires a target (or global target)\n") return end
+    local cmd = "SLAUGHTER " .. t .. (venom and (" " .. venom) or "")
+    grounde.wm.fast2h(stance, cmd, "eqbal")
+    return
+  end
+
+  if key == "farc" then
+    local stance = a[1]
+    local maybeT = a[2]
+    local maybeV = a[3]
+    if not stance then cecho("\n&lt;yellow&gt;Usage: farc &lt;speed|precision&gt; [target] [venom]\n") return end
+
+    local t = getTarget(maybeT)
+    if not t then
+      local venom = maybeT
+      local cmd = "ARC" .. (venom and (" " .. venom) or "")
+      grounde.wm.fast2h(stance, cmd, "eqbal")
+      return
+    end
+
+    local venom = maybeV
+    local cmd = "ARC " .. t .. (venom and (" " .. venom) or "")
+    grounde.wm.fast2h(stance, cmd, "eqbal")
+    return
+  end
+
+  if key == "fdev" then
+    local stance = a[1]
+    local zone = (a[2] or ""):lower()
+    local t = getTarget(a[3])
+    local venom = a[4]
+
+    if not stance or zone == "" then cecho("\n&lt;yellow&gt;Usage: fdev &lt;speed&gt; arms|legs [target] [venom]\n") return end
+    if stance:lower() ~= "speed" then cecho("\n&lt;yellow&gt;fdev only supports SPEED (devastate)\n") return end
+    if zone ~= "arms" and zone ~= "legs" then cecho("\n&lt;yellow&gt;fdev expects arms or legs\n") return end
+    if not t then cecho("\n&lt;yellow&gt;fdev requires a target (or global target)\n") return end
+
+    local cmd = "DEVASTATE " .. t .. " " .. zone:upper() .. (venom and (" " .. venom) or "")
+    grounde.wm.fast2h("speed", cmd, "eqbal")
+    return
+  end
+
+  cecho("\n&lt;red&gt;Unknown weaponmastery shorthand: " .. key .. "&lt;/red&gt;\n")
+end</script>
+				<eventHandlerList />
+			</Script>
+			<Script isActive="yes" isFolder="no">
+				<name>Runewarden Offense 2H</name>
+				<packageName></packageName>
+				<script>-- Grounde Runewarden Offense 2H - Workbench (patched &amp; integrated)
+
+-- ============================================
+-- Core tables
+-- ============================================
+
+grounde = grounde or {}
+grounde.opp = grounde.opp or {}
+grounde._lastSend = grounde._lastSend or { s = "", t = 0 }
+
+grounde.weapon = grounde.weapon or "sword" -- "sword" | "hammer"
+
+grounde.WEAPON_CMD = {
+  sword  = "wield bastard sword",
+  hammer = "wield warhammer",
+}
+
+grounde.ENVENOM_SWORD_CMD = "envenom bastard sword with curare"
+
+grounde.EMPOWER = {
+  -- For now: same priority for hammer/sword
+  hammer = { "isaz", "sleizak", "inguz" },
+  sword  = { "isaz", "sleizak", "inguz" },
+}
+
+-- ============================================
+-- Helpers (generic)
+-- ============================================
+
+local function trim(s) return (tostring(s or ""):gsub("^%s+",""):gsub("%s+$","")) end
+
+local function titleCaseName(name)
+  name = trim(tostring(name or ""))
+  -- Normalize Achaea names (letters, digits, apostrophe, hyphen)
+  name = name:gsub("[^%w'%-]", "")
+  name = name:lower()
+  return (name:gsub("(%a)([%w_']*)", function(a,b) return a:upper()..b end))
+end
+
+local function sendOnce(line)
+  line = tostring(line or "")
+  local now = os.clock()
+  local last = grounde._lastSend
+  if last.s == line and last.t and (now - last.t) &lt; 0.25 then return end
+  last.s = line
+  last.t = now
+  send(line)
+end
+
+-- Server-side alias helper (Achaea SETALIAS)
+-- We set an alias to a slash-chain and queue it (server queue) so chains are atomic.
+local function serverAlias(aliasName, cmds, mode)
+  aliasName = trim(aliasName)
+  if aliasName == "" then return end
+  sendOnce(string.format("setalias %s %s", aliasName, table.concat(cmds, "/")))
+  if mode == "queue" then
+    sendOnce("queue addclearfull full " .. aliasName)
+  else
+    sendOnce(aliasName)
+  end
+end
+
+local function tname()
+  if type(_G.target) == "string" and trim(_G.target) ~= "" then return trim(_G.target) end
+  return nil
+end
+
+local function ensureOpp(t)
+  t = titleCaseName(t)
+  grounde.opp[t] = grounde.opp[t] or {
+    parry = "none",
+    parryLimb = "none",
+    fracs = { skull = 0, tendon = 0, ribs = 0, wrist = 0 },
+    hpPct = nil,
+    hpSeenAt = nil,
+    perceived = false,
+    lyred = nil,
+    lyreSeenAt = nil,
+    _lastOthala = 0,
+  }
+  return grounde.opp[t]
+end
+
+local function empowerCmdsFor(wep)
+  local runes = grounde.EMPOWER[wep] or {}
+  if #runes == 0 then return {} end
+  return { "empower priority set " .. table.concat(runes, " ") }
+end
+
+-- ============================================
+-- Tracking (ALL tracking functions come before any decision logic)
+-- ============================================
+
+grounde.HARD_CAP  = grounde.HARD_CAP  or 7
+grounde.FRAC_ORDER    = grounde.FRAC_ORDER    or { "head", "legs", "torso", "arms" }
+grounde.STACK_TARGET  = grounde.STACK_TARGET  or 4
+grounde.BISECT_BELOW  = grounde.BISECT_BELOW  or 45
+grounde.BRAIN_SKULLS  = grounde.BRAIN_SKULLS  or 4
+grounde.DEV_L1 = grounde.DEV_L1 or 2
+grounde.DEV_L2 = grounde.DEV_L2 or 4
+grounde.DEV_L3 = grounde.DEV_L3 or 6
+grounde.DEV_MIN_HP_FOR_L2PLUS = grounde.DEV_MIN_HP_FOR_L2PLUS or 50
+
+local function normalizeParry(p)
+  p = trim(p or ""):lower()
+  if p == "" or p == "none" then return { zone = "none", limb = "none" } end
+  if p:find("head") then return { zone = "head", limb = "head" } end
+  if p:find("torso") or p:find("chest") or p:find("body") then return { zone = "torso", limb = "torso" } end
+  if p:find("left leg") then return { zone = "legs", limb = "left leg" } end
+  if p:find("right leg") then return { zone = "legs", limb = "right leg" } end
+  if p:find("left arm") then return { zone = "arms", limb = "left arm" } end
+  if p:find("right arm") then return { zone = "arms", limb = "right arm" } end
+  if p:find("leg") then return { zone = "legs", limb = "unknown leg" } end
+  if p:find("arm") then return { zone = "arms", limb = "unknown arm" } end
+  return { zone = "none", limb = "none" }
+end
+
+function grounde.setParry(person, limbText)
+  person = titleCaseName(person)
+  local o = ensureOpp(person)
+  local info = normalizeParry(limbText)
+  o.parry = info.zone
+  o.parryLimb = info.limb
+  o.perceived = true
+end
+
+function grounde.setFracs(person, skull, tendon, ribs, wrist)
+  person = titleCaseName(person)
+  local o = ensureOpp(person)
+  o.fracs.skull  = tonumber(skull  or 0) or 0
+  o.fracs.tendon = tonumber(tendon or 0) or 0
+  o.fracs.ribs   = tonumber(ribs   or 0) or 0
+  o.fracs.wrist  = tonumber(wrist  or 0) or 0
+  o.perceived = true
+end
+
+function grounde.ingestPerceiveFromAk(person, parryLimbText)
+  person = titleCaseName(person)
+  grounde.setParry(person, parryLimbText)
+  local skull  = ak and ak.twoh and (ak.twoh.skull or ak.twoh.skulls)
+  local tendon = ak and ak.twoh and (ak.twoh.tendons or ak.twoh.tendon)
+  local ribs   = ak and ak.twoh and (ak.twoh.ribs or ak.twoh.rib)
+  local wrist  = ak and ak.twoh and (ak.twoh.wrist or ak.twoh.wrists)
+  grounde.setFracs(person, skull or 0, tendon or 0, ribs or 0, wrist or 0)
+  -- mark pending perceive if present
+  local p = grounde.pending and grounde.pending[person]
+  if p then p.perceive = true end
+end
+
+function grounde.setHpPct(person, pct)
+  person = titleCaseName(person)
+  local o = ensureOpp(person)
+  pct = tonumber(pct or 0) or 0
+  if pct &lt; 0 then pct = 0 end
+  if pct &gt; 100 then pct = 100 end
+  o.hpPct = pct
+  o.hpSeenAt = os.clock()
+end
+
+function grounde.onAssessHp(person, pct)
+  grounde.setHpPct(person, pct)
+  -- mark pending perceive so executor can proceed if waiting
+  local p = grounde.pending and grounde.pending[titleCaseName(person)]
+  if p then p.perceive = true end
+end
+
+function grounde.getHpPct(person, maxAge)
+  person = titleCaseName(person)
+  local o = ensureOpp(person)
+  if o.hpPct == nil then return nil end
+  local age = os.clock() - (o.hpSeenAt or 0)
+  local limit = tonumber(maxAge or 8) or 8
+  if age &gt; limit then return nil end
+  return tonumber(o.hpPct) or nil
+end
+
+-- ============================================
+-- Limb damage integration (reads from your lb package)
+-- ============================================
+
+local function lbHits(person, limb)
+  if not lb then return nil end
+  local tc  = titleCaseName(person)
+  local lc  = tc:lower()
+  local raw = trim(tostring(person or ""))
+  local candidates = { tc, raw, raw:lower(), lc }
+  local entry
+  for _, k in ipairs(candidates) do
+    if k and k ~= "" and type(lb[k]) == "table" then
+      entry = lb[k]
+      break
+    end
+  end
+  if not entry or type(entry.hits) ~= "table" then return nil end
+  local v = entry.hits[limb]
+  if v == nil then v = entry.hits[limb:gsub("%s+","")] or entry.hits[limb:gsub("%s+","_")] end
+  if v == nil then return 0 end
+  return tonumber(v) or 0
+end
+
+function grounde.getLimbHits(person, limb)
+  if not person or not limb then return nil end
+  return lbHits(person, limb)
+end
+
+grounde.PREP_TARGET = grounde.PREP_TARGET or 95
+
+function grounde.limbIsBroken(person, limb)
+  local h = lbHits(person, limb)
+  if h == nil then return false end
+  return h &gt;= 100
+end
+
+function grounde.limbIsPrepped(person, limb)
+  local h = lbHits(person, limb)
+  if h == nil then return false end
+  return h &gt;= (grounde.PREP_TARGET or 95)
+end
+
+function grounde.legsBroken(person)
+  return grounde.limbIsBroken(person, "left leg") and grounde.limbIsBroken(person, "right leg")
+end
+
+-- Optional helper: clear limb hit counters on break/cure events.
+-- Call this from your limb-break/cure parser if you want to ensure lb counters reset.
+function grounde._clearLimbHitsOnBreak(person, limb)
+  if not lb then return end
+  person = titleCaseName(person)
+  if not lb[person] or not lb[person].hits then return end
+  limb = trim(limb or ""):lower()
+  if lb[person].hits[limb] then lb[person].hits[limb] = 0 end
+  -- try alternative keys
+  if lb[person].hits[limb:gsub("%s+","")] then lb[person].hits[limb:gsub("%s+","")] = 0 end
+  if lb[person].hits[limb:gsub("%s+","_")] then lb[person].hits[limb:gsub("%s+","_")] = 0 end
+end
+
+-- ============================================
+-- Decision helpers (these only READ tracking state)
+-- ============================================
+
+local function zoneCapped(o, zone)
+  if zone == "head"  then return (o.fracs.skull  or 0) &gt;= grounde.HARD_CAP end
+  if zone == "legs"  then return (o.fracs.tendon or 0) &gt;= grounde.HARD_CAP end
+  if zone == "torso" then return (o.fracs.ribs   or 0) &gt;= grounde.HARD_CAP end
+  if zone == "arms"  then return (o.fracs.wrist  or 0) &gt;= grounde.HARD_CAP end
+  return false
+end
+
+grounde.cmd = grounde.cmd or {}
+function grounde.cmd.perceive(t) return "battlefury perceive " .. t end
+function grounde.cmd.assess(t)  return "assess " .. t end
+
+grounde.attack = grounde.attack or {}
+
+local function hasTargetDef(person, def)
+  if not ak or not ak.defs then return false end
+  person = titleCaseName(person)
+  if type(ak.defs[def]) ~= "nil" then return ak.defs[def] == true end
+  local pd = ak.defs[person]
+  if type(pd) == "table" then
+    if pd[def] == true then return true end
+  end
+  return false
+end
+
+local function pickWeapon(pref, allowed)
+  allowed = allowed or { hammer = true, sword = true }
+  if pref == "hammer" and allowed.hammer then return "hammer" end
+  if pref == "sword"  and allowed.sword  then return "sword"  end
+  if allowed.hammer then return "hammer" end
+  if allowed.sword  then return "sword"  end
+  return grounde.weapon or "sword"
+end
+
+function grounde.attack.overhand(t)
+  local wep = pickWeapon("hammer", { hammer = true, sword = true })
+  return "overhand " .. t, wep, { zone = "head", frac = "skull", kind = "attack" }
+end
+
+function grounde.attack.underhand(t)
+  local wep = pickWeapon("hammer", { hammer = true, sword = true })
+  return "underhand " .. t, wep, { zone = "torso", frac = "ribs", kind = "attack" }
+end
+
+function grounde.attack.pulverise(t, side, limb)
+  side = trim(side):lower()
+  limb = trim(limb):lower()
+  local zone = (limb == "leg") and "legs" or "arms"
+  local frac = (limb == "leg") and "tendon" or "wrist"
+  return string.format("pulverise %s %s %s", t, side, limb), "hammer", { zone = zone, frac = frac, kind = "attack" }
+end
+
+function grounde.attack.hew(t, side, limb)
+  side = trim(side):lower()
+  limb = trim(limb):lower()
+  local zone = (limb == "leg") and "legs" or "arms"
+  local frac = (limb == "leg") and "tendon" or "wrist"
+  return string.format("hew %s %s %s", t, side, limb), "sword", { zone = zone, frac = frac, kind = "attack" }
+end
+
+function grounde.attack.brain(t)
+  return "brain " .. t, "hammer", { zone = "head", frac = "skull", kind = "kill", requires = { overwhelm = true, skull = 5 } }
+end
+
+function grounde.attack.devastate(t, zone)
+  zone = trim(zone):lower()
+  local wep = pickWeapon("hammer", { hammer = true, sword = true })
+  local frac = (zone == "legs") and "tendon" or "wrist"
+  return string.format("devastate %s %s", t, zone), wep, { zone = zone, frac = frac, kind = "break" }
+end
+
+function grounde.attack.splinter(t)
+  return "splinter " .. t, "hammer", { kind = "defbreak", breaks = { "shield", "rebounding" } }
+end
+
+function grounde.attack.carve(t)
+  return "carve " .. t, "sword", { kind = "defbreak", breaks = { "shield", "rebounding" } }
+end
+
+function grounde.attack.impale(t)
+  return "impale " .. t, "sword", { kind = "setup", requires = { prone = true } }
+end
+
+function grounde.attack.disembowel(t)
+  return "disembowel " .. t, "sword", { kind = "kill", requires = { impale = true } }
+end
+
+function grounde.attack.bisect(t)
+  return "bisect " .. t, "sword", { kind = "execute", requires = { hp_below = 45 } }
+end
+
+function grounde.attack.pickDefBreak(t)
+  if not hasTargetDef(t, "shield") and not hasTargetDef(t, "rebounding") then
+    return nil
+  end
+  if grounde.WEAPON_CMD and grounde.WEAPON_CMD.hammer and grounde.WEAPON_CMD.hammer ~= "" then
+    return grounde.attack.splinter(t)
+  end
+  return grounde.attack.carve(t)
+end
+
+function grounde.attack.forFracZone(t, zone)
+  zone = trim(zone):lower()
+  if zone == "head" then
+    return grounde.attack.overhand(t)
+  elseif zone == "torso" then
+    return grounde.attack.underhand(t)
+  elseif zone == "arms" then
+    local o = ensureOpp(t)
+    local left  = grounde.getLimbHits(t, "left arm") or 0
+    local right = grounde.getLimbHits(t, "right arm") or 0
+    local parried = o.parryLimb
+    local chosen
+    if left &gt;= right then
+      chosen = "left"
+      if parried == "left arm" then chosen = "right" end
+    else
+      chosen = "right"
+      if parried == "right arm" then chosen = "left" end
+    end
+    return grounde.attack.pulverise(t, chosen, "arm")
+  elseif zone == "legs" then
+    local o = ensureOpp(t)
+    local left  = grounde.getLimbHits(t, "left leg") or 0
+    local right = grounde.getLimbHits(t, "right leg") or 0
+    local parried = o.parryLimb
+    local chosen
+    if left &gt;= right then
+      chosen = "left"
+      if parried == "left leg" then chosen = "right" end
+    else
+      chosen = "right"
+      if parried == "right leg" then chosen = "left" end
+    end
+    return grounde.attack.pulverise(t, chosen, "leg")
+  end
+  return grounde.attack.overhand(t)
+end
+
+-- ============================================
+-- Lyre tracking (prismatic barrier)
+-- ============================================
+
+function grounde.setLyred(person, isUp)
+  person = titleCaseName(person)
+  local o = ensureOpp(person)
+  o.lyred = (isUp == true)
+  o.lyreSeenAt = os.clock()
+  if type(_G.targetlyred) ~= "nil" then
+    _G.targetlyred = o.lyred and 1 or 0
+  end
+end
+
+function grounde.isLyred(person, maxAge)
+  person = titleCaseName(person)
+  local o = ensureOpp(person)
+  local function withinAge()
+    if not maxAge then return true end
+    local age = os.clock() - (o.lyreSeenAt or 0)
+    return age &lt;= tonumber(maxAge)
+  end
+  if o.lyred ~= nil then
+    return (o.lyred == true) and withinAge()
+  end
+  if type(_G.targetlyred) == "number" then
+    o.lyred = (_G.targetlyred == 1)
+    o.lyreSeenAt = os.clock()
+    return (o.lyred == true) and withinAge()
+  end
+  return false
+end
+
+-- ============================================
+-- Fracture selection
+-- ============================================
+
+function grounde.pickFracZone(person)
+  person = titleCaseName(person)
+  local o = ensureOpp(person)
+  local parry = o.parry or "none"
+  local fr = {
+    head  = (o.fracs.skull  or 0),
+    legs  = (o.fracs.tendon or 0),
+    torso = (o.fracs.ribs   or 0),
+    arms  = (o.fracs.wrist  or 0),
+  }
+  local function allowed(zone) return zone ~= parry end
+  for _, z in ipairs(grounde.FRAC_ORDER or {"head","legs","torso","arms"}) do
+    if fr[z] &lt; (grounde.STACK_TARGET or 5) and allowed(z) and not zoneCapped(o, z) then
+      return z
+    end
+  end
+  local best, bestVal = nil, 1e9
+  for _, z in ipairs({"head","legs","torso","arms"}) do
+    if allowed(z) then
+      local v = fr[z]
+      if v &lt; bestVal then best, bestVal = z, v end
+    end
+  end
+  if best then return best end
+  for _, z in ipairs({"head","legs","torso","arms"}) do
+    if allowed(z) then return z end
+  end
+  return "head"
+end
+
+-- ============================================
+-- Decision logic
+-- ============================================
+
+local function proneScore()
+  return (affstrack and affstrack.score and tonumber(affstrack.score.prone)) or 0
+end
+local function isProne() return proneScore() &gt;= 100 end
+local function impaleOwner() return (affstrack and affstrack.impale) or false end
+local function isImpalingTarget() return impaleOwner() == "Me" end
+
+function grounde.devastateLevel(person, zone)
+  person = titleCaseName(person)
+  local o = ensureOpp(person)
+  zone = trim(zone):lower()
+  local n = 0
+  if zone == "legs" then n = tonumber(o.fracs.tendon or 0) or 0
+  elseif zone == "arms" then n = tonumber(o.fracs.wrist or 0) or 0
+  else return 0 end
+
+  local lvl = 0
+  if n &gt;= (grounde.DEV_L3 or 6) then lvl = 3
+  elseif n &gt;= (grounde.DEV_L2 or 4) then lvl = 2
+  elseif n &gt;= (grounde.DEV_L1 or 2) then lvl = 1
+  end
+
+  -- Increase level if either limb in that zone is already broken
+  if zone == "legs" then
+    if grounde.limbIsBroken(person, "left leg") or grounde.limbIsBroken(person, "right leg") then
+      lvl = math.min(3, lvl + 1)
+    end
+  elseif zone == "arms" then
+    if grounde.limbIsBroken(person, "left arm") or grounde.limbIsBroken(person, "right arm") then
+      lvl = math.min(3, lvl + 1)
+    end
+  end
+
+  return lvl
+end
+
+local function canUseDevastateL2Plus(person)
+  local pct = grounde.getHpPct(person)
+  if pct == nil then return false end
+  return pct &lt; (grounde.DEV_MIN_HP_FOR_L2PLUS or 50)
+end
+
+local function bfForZone(o, zone)
+  zone = trim(zone):lower()
+  local n = 0
+  if zone == "head" then n = tonumber(o.fracs.skull or 0) or 0
+  elseif zone == "legs" then n = tonumber(o.fracs.tendon or 0) or 0
+  elseif zone == "torso" then n = tonumber(o.fracs.ribs or 0) or 0
+  elseif zone == "arms" then n = tonumber(o.fracs.wrist or 0) or 0 end
+  if n &gt;= 4 then return "precision" end
+  return "speed"
+end
+
+-- Measure limb progress for a zone (max of the two relevant limbs)
+function grounde.limbProgressForZone(person, zone)
+  person = titleCaseName(person or "")
+  zone = trim(zone or ""):lower()
+  if zone == "legs" then
+    return math.max(grounde.getLimbHits(person, "left leg") or 0, grounde.getLimbHits(person, "right leg") or 0)
+  elseif zone == "arms" then
+    return math.max(grounde.getLimbHits(person, "left arm") or 0, grounde.getLimbHits(person, "right arm") or 0)
+  end
+  return 0
+end
+
+function grounde.chooseAction(person)
+  person = titleCaseName(person)
+  local o = ensureOpp(person)
+  if grounde.isLyred(person, 6) then
+    o._lastOthala = o._lastOthala or 0
+    local now = os.clock()
+    if (now - o._lastOthala) &gt;= 2.0 then
+      o._lastOthala = now
+      o.lyred = false
+      o.lyreSeenAt = now
+      return { exclusive = true, cmd = "sketch othala on ground" }
+    end
+  end
+  do
+    local atk, wep = grounde.attack.pickDefBreak(person)
+    if atk then
+      return { wep = wep, bf = "speed", atkCmds = { atk }, zone = "head" }
+    end
+  end
+  local hp    = grounde.getHpPct(person)
+  local skull = tonumber(o.fracs.skull or 0) or 0
+  local ribs  = tonumber(o.fracs.ribs  or 0) or 0
+  local tend  = tonumber(o.fracs.tendon or 0) or 0
+  if isImpalingTarget() then
+    local dis, wep = grounde.attack.disembowel(person)
+    return { wep = wep, bf = bfForZone(o, "torso"), atkCmds = { dis }, zone = "torso" }
+  end
+  if hp ~= nil and hp &lt; (grounde.BISECT_BELOW or 45) then
+    local bi, wep = grounde.attack.bisect(person)
+    return { wep = wep, bf = bfForZone(o, "torso"), atkCmds = { bi }, zone = "torso" }
+  end
+  if skull &gt;= (grounde.BRAIN_SKULLS or 5) then
+    local brain, wepBrain = grounde.attack.brain(person)
+    return { wep = wepBrain, bf = "overwhelm", atkCmds = { brain }, zone = "head" }
+  end
+
+  -- Devastate decision: consider legs (and arms if relevant) and prefer the zone with better limb progress
+  if ribs &gt;= 4 then
+    local candidates = {}
+    local lvlLegs = grounde.devastateLevel(person, "legs")
+    if lvlLegs &gt;= 1 and (lvlLegs == 1 or canUseDevastateL2Plus(person)) then candidates[#candidates+1] = "legs" end
+    local lvlArms = grounde.devastateLevel(person, "arms")
+    if lvlArms &gt;= 1 and (lvlArms == 1 or canUseDevastateL2Plus(person)) then candidates[#candidates+1] = "arms" end
+
+    if #candidates &gt; 0 then
+      local bestZone, bestProg = nil, -1
+      for _, z in ipairs(candidates) do
+        local prog = grounde.limbProgressForZone(person, z)
+        if prog &gt; bestProg then bestZone, bestProg = z, prog end
+      end
+      if bestZone then
+        local dev, _wepDev = grounde.attack.devastate(person, bestZone)
+        local imp = select(1, grounde.attack.impale(person))
+        local dis = select(1, grounde.attack.disembowel(person))
+      
+        -- determine sequence weapon: prefer sword if any sword-only attacks present
+        local seq_wep = _wepDev or grounde.weapon
+        if (imp and imp:match("^impale")) or (dis and dis:match("^disembowel")) then
+          seq_wep = "sword"
+        end
+      
+        return { wep = seq_wep, bf = bfForZone(o, bestZone), atkCmds = { dev, imp, dis }, zone = bestZone }
+      end
+    end
+  end
+
+  if tend &gt;= (grounde.DEV_L3 or 6) then
+    local dev, _wepDev = grounde.attack.devastate(person, "legs")
+    local brainNeed = tonumber(grounde.BRAIN_SKULLS or 5) or 5
+    local ribNeed   = 4
+    local brainScore = skull / brainNeed
+    local ribScore   = ribs  / ribNeed
+    if skull &gt;= brainNeed and brainScore &gt;= ribScore then
+      local brain, wepBrain = grounde.attack.brain(person)
+      return { wep = wepBrain, bf = "overwhelm", atkCmds = { brain }, zone = "head" }
+    end
+    local imp = select(1, grounde.attack.impale(person))
+    local dis = select(1, grounde.attack.disembowel(person))
+    
+    -- determine sequence weapon: prefer sword if any sword-only attacks present
+    local seq_wep = _wepDev or grounde.weapon
+    if (imp and imp:match("^impale")) or (dis and dis:match("^disembowel")) then
+      seq_wep = "sword"
+    end
+    return { wep = seq_wep, bf = bfForZone(o, "legs"), atkCmds = { dev, imp, dis }, zone = "legs" }
+  end
+
+  -- default: pick a fracture zone and return its attack
+  local zone = grounde.pickFracZone(person)
+  local atk, wep, meta = grounde.attack.forFracZone(person, zone)
+  local bf = bfForZone(o, meta and meta.zone or zone)
+  return { wep = wep, bf = bf, atkCmds = { atk }, zone = (meta and meta.zone) or zone }
+end
+
+-- ============================================
+-- Execution / pending flow (glue to triggers)
+-- ============================================
+
+grounde.pending = grounde.pending or {}
+
+local function ensurePending(t)
+  t = titleCaseName(t)
+  local p = grounde.pending[t]
+  if not p then
+    p = { perceive = false, timeoutTimer = nil }
+    grounde.pending[t] = p
+  end
+  return p
+end
+
+local function clearPending(t)
+  t = titleCaseName(t)
+  local p = grounde.pending[t]
+  if p and p.timeoutTimer then killTimer(p.timeoutTimer) p.timeoutTimer = nil end
+  grounde.pending[t] = nil
+end
+
+local function isEngagedWith(t)
+  t = titleCaseName(t)
+  if grounde.engagedTarget and titleCaseName(grounde.engagedTarget) == t then return true end
+  return grounde.engaged == true
+end
+
+-- Send the initial perceive/assess chain (server-side queued)
+function grounde.startCycle(t)
+  t = titleCaseName(t)
+  if grounde.isLyred(t, 6) then
+    local o = ensureOpp(t)
+    o._lastOthala = o._lastOthala or 0
+    local now = os.clock()
+    if (now - o._lastOthala) &gt;= 2.0 then
+      o._lastOthala = now
+      o.lyred = false
+      o.lyreSeenAt = now
+      sendOnce("sketch othala on ground")
+    end
+    return
+  end
+
+  local p = ensurePending(t)
+  p.perceive = false
+
+  local initCmds = {}
+  if not isEngagedWith(t) then
+    initCmds[#initCmds+1] = "engage " .. t
+  end
+  initCmds[#initCmds+1] = grounde.cmd.perceive(t)
+  initCmds[#initCmds+1] = grounde.cmd.assess(t)
+
+  -- queue the chain server-side to keep it atomic
+  serverAlias("grnd_init_" .. t:gsub("%s+","_"):lower(), initCmds, "queue")
+
+  -- set a timeout: if perceive never arrives, clear pending after 4s
+  if p.timeoutTimer then killTimer(p.timeoutTimer) p.timeoutTimer = nil end
+  p.timeoutTimer = tempTimer(4, function() clearPending(t) end)
+end
+
+-- Public trigger call: when perceive/assess info is parsed, mark pending and execute.
+-- Your perceive/assess trigger should call this (or grounde.ingestPerceiveFromAk which marks pending already).
+function grounde.onPerceiveReceived(person)
+  person = titleCaseName(person)
+  local p = ensurePending(person)
+  p.perceive = true
+  -- execute now (immediate)
+  grounde.executeAction(person)
+  clearPending(person)
+end
+
+-- Builds and sends a queued offense package for person.
+function grounde.executeAction(person)
+  person = titleCaseName(person)
+  local action = grounde.chooseAction(person)
+  if not action then return end
+
+  -- exclusive single-server command (e.g., sketch othala)
+  if action.exclusive and action.cmd then
+    sendOnce(action.cmd)
+    return
+  end
+
+  -- Build command chain: wield (if needed), empower, envenom (sword only), battlefury (bf), attacks
+  local cmds = {}
+
+  -- weapon switch (wield is first)
+  if action.wep and action.wep ~= "" and action.wep ~= grounde.weapon then
+    local wcmd = grounde.WEAPON_CMD[action.wep]
+    if wcmd and wcmd ~= "" then cmds[#cmds+1] = wcmd; grounde.weapon = action.wep end
+  end
+
+  -- empower
+  local e = empowerCmdsFor(action.wep or grounde.weapon)
+  for i = 1, #e do cmds[#cmds+1] = e[i] end
+
+  -- envenom for sword if desired and available
+  if (action.wep == "sword" or grounde.weapon == "sword") and grounde.ENVENOM_SWORD_CMD and grounde.ENVENOM_SWORD_CMD ~= "" then
+    cmds[#cmds+1] = grounde.ENVENOM_SWORD_CMD
+  end
+
+  -- battlefury
+  if action.bf then
+    if action.bf == "overwhelm" then
+      cmds[#cmds+1] = "battlefury overwhelm " .. person
+    else
+      cmds[#cmds+1] = "battlefury focus " .. action.bf
+    end
+  end
+  
+  -- attacks
+  for i = 1, #action.atkCmds do cmds[#cmds+1] = action.atkCmds[i] end
+
+  -- final assess to refresh HP next time
+  cmds[#cmds+1] = grounde.cmd.assess(person)
+
+  -- send as single alias queued server-side
+  local aliasName = "grnd_exec_" .. person:gsub("%s+","_"):lower()
+  serverAlias(aliasName, cmds, "queue")
+
+  -- update engaged state
+  grounde.engagedTarget = person
+  grounde.engaged = true
+end
+
+-- ============================================
+-- Trigger/handler convenience notes
+-- ============================================
+-- When your perceive trigger fires (server reply), call:
+-- grounde.onPerceiveReceived(person)
+-- or grounde.ingestPerceiveFromAk(person, parryLimbText) if you have AK data to ingest.
+-- When your perceive trigger fires (server reply), call:
+--   grounde.onPerceiveReceived(person)
+-- or
+--   grounde.ingestPerceiveFromAk(person, parryLimbText)
+-- When a parry trigger fires, call:
+--   grounde.setParry(person, limbText)
+-- When fracture triggers fire, call:
+--   grounde.setFracs(person, skull, tendon, ribs, wrist)
+-- When assess (hp) triggers fire, call:
+--   grounde.onAssessHp(person, pct)
+-- When lyre events fire, call:
+--   grounde.setLyred(person, true/false)
+
+-- Offense start/stop functions, called in Attack alias to start/stop offense.
+function grounde.start(target)
+  target = titleCaseName(target or tname() or _G.target or "")
+  if target == "" then return end
+  grounde.running = true
+  grounde.startCycle(target)
+end
+
+function grounde.stop()
+  grounde.running = false
+  grounde.engaged = false
+  grounde.engagedTarget = nil
+end
+
+-- ============================================
+-- End of script
+-- ============================================</script>
+				<eventHandlerList />
+			</Script>
+		</ScriptGroup>
+	</ScriptPackage>
+	<KeyPackage />
+</MudletPackage>
